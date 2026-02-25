@@ -239,9 +239,10 @@ function demoXorInverse(plaintext: string, key: string): void {
     const kBin: string = k.charCodeAt(0).toString(2).padStart(8, "0")
     const cBin: string = cipherVal.toString(2).padStart(8, "0")
     const dBin: string = decryptVal.toString(2).padStart(8, "0")
+    const oChr: string = String.fromCharCode(decryptVal)
 
     console.log(\`'\${p}' (\${pBin}) ^ '\${k}' (\${kBin}) = \${cBin} (cifrado)\`)
-    console.log(\`    \${cBin}  ^ '\${k}' (\${kBin}) = \${dBin} -> '\${String.fromCharCode(decryptVal)}'\`)
+    console.log(\`    \${cBin}  ^ '\${k}' (\${kBin}) = \${dBin} -> '\${oChr}'\`)
     console.log()
   }
 }

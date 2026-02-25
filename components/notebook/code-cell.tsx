@@ -29,6 +29,8 @@ interface CodeCellProps {
 
 function highlightSyntax(code: string): React.ReactNode[] {
   const lines = code.split("\n")
+  const totalLines = lines.length
+  const gutterWidth = `${String(totalLines).length + 1}ch`
   return lines.map((line, lineIndex) => {
     const tokens: React.ReactNode[] = []
     let remaining = line
@@ -63,7 +65,7 @@ function highlightSyntax(code: string): React.ReactNode[] {
 
       // TypeScript / JS keywords
       const kwMatch = remaining.match(
-        /^(function|const|let|var|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|import|export|from|as|default|class|extends|implements|interface|type|enum|namespace|async|await|yield|try|catch|finally|throw|void|delete|in|of|true|false|null|undefined|this|super|static|readonly|public|private|protected|abstract|declare|module|require|keyof|infer|never|unknown|any|number|string|boolean|bigint|symbol|object|Record|Array|Map|Set|Promise|Uint8Array)\b/
+        /^(function|const|let|var|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|import|export|from|as|default|class|extends|implements|interface|type|enum|namespace|async|await|yield|try|catch|finally|throw|void|delete| in |of|true|false|null|undefined|this|super|static|readonly|public|private|protected|abstract|declare|module|require|keyof|infer|never|unknown|any|number|string|boolean|bigint|symbol|object|Record|Array|Map|Set|Promise|Uint8Array)\b/
       )
       if (kwMatch) {
         tokens.push(
@@ -167,8 +169,8 @@ function highlightSyntax(code: string): React.ReactNode[] {
     return (
       <div key={lineIndex} className="flex">
         <span
-          className="mr-4 inline-block w-6 text-right select-none font-mono text-xs"
-          style={{ color: "var(--syntax-comment)" }}
+          className="mr-4 inline-block text-right select-none font-mono text-xs shrink-0"
+          style={{ color: "var(--syntax-comment)", width: gutterWidth }}
         >
           {lineIndex + 1}
         </span>
