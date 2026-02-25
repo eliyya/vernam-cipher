@@ -14,6 +14,7 @@ export interface VernamStep {
   xorBinary: string
   cipherChar: string
   cipherSoFar: string
+  cipherList: string[]
   description: string
   phase: "idle" | "show-plain" | "show-key" | "xor" | "result"
 }
@@ -41,7 +42,7 @@ function BinaryDisplay({
     <div className="flex items-center gap-3">
       <span className="w-20 text-right text-xs font-mono text-muted-foreground">{label}</span>
       <span
-        className="w-8 text-center text-sm font-mono font-bold"
+        className="w-10 text-center text-sm font-mono font-bold"
         style={{ color }}
       >
         {`'${charLabel}'`}
@@ -160,7 +161,7 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
         {/* XOR operator line */}
         <div className="flex items-center gap-3">
           <span className="w-20 text-right text-xs font-mono text-muted-foreground">XOR</span>
-          <span className="w-8" />
+          <span className="w-10" />
           <div className="flex gap-0.5">
             {step.plainBinary.split("").map((_, i) => (
               <span
@@ -185,9 +186,12 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
 
       {/* Cipher text built so far */}
       <div className="mb-4 rounded-md bg-background/60 px-4 py-3">
-        <div className="mb-1 text-xs font-mono text-muted-foreground">Texto cifrado acumulado:</div>
+        <div className="mb-1 text-xs font-mono text-muted-foreground">Texto cifrado acumulado en hexadecimal:</div>
         <div className="flex gap-0.5 flex-wrap">
-          {step.cipherSoFar.split("").map((ch, i) => (
+          {step.cipherList.map((ch, i) => {
+            console.log(step);
+            
+            return (
             <span
               key={i}
               className="flex h-8 min-w-[2rem] items-center justify-center rounded text-sm font-mono font-bold transition-all duration-300"
@@ -200,9 +204,11 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
                   i === step.charIndex ? "0 0 8px var(--syntax-number)" : "none",
               }}
             >
-              {ch === " " ? "\u2423" : ch}
+              {ch.padStart(2, "0")}
+              {/* {steps[]} */}
             </span>
-          ))}
+          )
+          })}
         </div>
       </div>
 

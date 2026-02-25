@@ -27,6 +27,80 @@ interface CodeCellProps {
   onFocus: (id: string) => void
 }
 
+function highlightInlineExpression(
+  expr: string,
+  lineIndex: number,
+  parentIdx: number,
+  tIdx: number
+): React.ReactNode[] {
+  const tokens: React.ReactNode[] = []
+  let rem = expr
+  let i = 0
+
+  while (rem.length > 0) {
+    // Whitespace
+    const ws = rem.match(/^[ \t]+/)
+    if (ws) {
+      tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ whiteSpace: "pre" }}>{ws[0]}</span>)
+      rem = rem.slice(ws[0].length)
+      i++
+      continue
+    }
+
+    // Strings inside interpolation
+    const innerStr = rem.match(/^(["'])(?:(?!\1|\\).|\\.)*\1/)
+    if (innerStr) {
+      tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ color: "var(--syntax-string)" }}>{innerStr[0]}</span>)
+      rem = rem.slice(innerStr[0].length)
+      i++
+      continue
+    }
+
+    // Numbers
+    const num = rem.match(/^(0x[0-9a-fA-F]+|0b[01]+|\d+\.?\d*|\.\d+)/)
+    if (num) {
+      tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ color: "var(--syntax-number)" }}>{num[0]}</span>)
+      rem = rem.slice(num[0].length)
+      i++
+      continue
+    }
+
+    // Function calls
+    const func = rem.match(/^([a-zA-Z_]\w*)\s*(?=\()/)
+    if (func) {
+      tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ color: "var(--syntax-function)" }}>{func[1]}</span>)
+      rem = rem.slice(func[1].length)
+      i++
+      continue
+    }
+
+    // Property access / identifiers
+    const ident = rem.match(/^[a-zA-Z_]\w*/)
+    if (ident) {
+      tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ color: "var(--syntax-variable)" }}>{ident[0]}</span>)
+      rem = rem.slice(ident[0].length)
+      i++
+      continue
+    }
+
+    // Operators
+    const op = rem.match(/^(===|!==|==|!=|<=|>=|=>|\?\?|\?\.|&&|\|\||[+\-*/%=<>!&|^~.,:;()\[\]])/)
+    if (op) {
+      tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ color: "var(--syntax-operator)" }}>{op[0]}</span>)
+      rem = rem.slice(op[0].length)
+      i++
+      continue
+    }
+
+    // Default character
+    tokens.push(<span key={`expr-${lineIndex}-${parentIdx}-${tIdx}-${i}`} style={{ color: "var(--foreground)" }}>{rem[0]}</span>)
+    rem = rem.slice(1)
+    i++
+  }
+
+  return tokens
+}
+
 function highlightSyntax(code: string): React.ReactNode[] {
   const lines = code.split("\n")
   const totalLines = lines.length
@@ -48,10 +122,103 @@ function highlightSyntax(code: string): React.ReactNode[] {
         continue
       }
 
-      // Strings (double, single, backtick)
-      const strMatch =
-        remaining.match(/^(["'`])(?:(?!\1|\\).|\\.)*\1/) ||
-        remaining.match(/^`(?:[^`\\]|\\.)*`/)
+      // Template literals with interpolation support
+      if (remaining[0] === "`") {
+        const templateTokens: React.ReactNode[] = []
+        let tIdx = 0
+        let tRem = remaining.slice(1) // skip opening backtick
+        templateTokens.push(
+          <span key={`${lineIndex}-${idx}-topen`} style={{ color: "var(--syntax-string)" }}>{"`"}</span>
+        )
+
+        while (tRem.length > 0) {
+          // End of template literal
+          if (tRem[0] === "`") {
+            templateTokens.push(
+              <span key={`${lineIndex}-${idx}-tclose`} style={{ color: "var(--syntax-string)" }}>{"`"}</span>
+            )
+            tRem = tRem.slice(1)
+            break
+          }
+
+          // Interpolation ${...}
+          if (tRem[0] === "$" && tRem[1] === "{") {
+            templateTokens.push(
+              <span key={`${lineIndex}-${idx}-t${tIdx}-open`} style={{ color: "var(--syntax-operator)" }}>{"${"}</span>
+            )
+            tRem = tRem.slice(2)
+            tIdx++
+
+            // Collect everything inside ${...}, handling nested braces
+            let depth = 1
+            let exprStr = ""
+            while (tRem.length > 0 && depth > 0) {
+              if (tRem[0] === "{") depth++
+              else if (tRem[0] === "}") {
+                depth--
+                if (depth === 0) {
+                  tRem = tRem.slice(1)
+                  break
+                }
+              }
+              exprStr += tRem[0]
+              tRem = tRem.slice(1)
+            }
+
+            // Highlight the expression inside interpolation recursively
+            const innerHighlighted = highlightInlineExpression(exprStr, lineIndex, idx, tIdx)
+            templateTokens.push(...innerHighlighted)
+
+            templateTokens.push(
+              <span key={`${lineIndex}-${idx}-t${tIdx}-close`} style={{ color: "var(--syntax-operator)" }}>{"}"}</span>
+            )
+            tIdx++
+            continue
+          }
+
+          // Escape sequences
+          if (tRem[0] === "\\" && tRem.length > 1) {
+            templateTokens.push(
+              <span key={`${lineIndex}-${idx}-t${tIdx}`} style={{ color: "var(--syntax-string)" }}>
+                {tRem.slice(0, 2)}
+              </span>
+            )
+            tRem = tRem.slice(2)
+            tIdx++
+            continue
+          }
+
+          // Regular string characters - collect consecutive non-special chars
+          const plainMatch = tRem.match(/^[^`$\\]+/)
+          if (plainMatch) {
+            templateTokens.push(
+              <span key={`${lineIndex}-${idx}-t${tIdx}`} style={{ color: "var(--syntax-string)" }}>
+                {plainMatch[0]}
+              </span>
+            )
+            tRem = tRem.slice(plainMatch[0].length)
+            tIdx++
+            continue
+          }
+
+          // Lone $ not followed by { - treat as string
+          templateTokens.push(
+            <span key={`${lineIndex}-${idx}-t${tIdx}`} style={{ color: "var(--syntax-string)" }}>
+              {tRem[0]}
+            </span>
+          )
+          tRem = tRem.slice(1)
+          tIdx++
+        }
+
+        tokens.push(<span key={`${lineIndex}-${idx}`}>{templateTokens}</span>)
+        remaining = tRem
+        idx++
+        continue
+      }
+
+      // Strings (double, single quotes only - backticks handled above)
+      const strMatch = remaining.match(/^(["'])(?:(?!\1|\\).|\\.)*\1/)
       if (strMatch) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-string)" }}>

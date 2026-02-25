@@ -24,6 +24,8 @@ function xorBinary(a: string, b: string): string {
 function generateVernamSteps(plaintext: string, key: string): VernamStep[] {
   const steps: VernamStep[] = []
   let cipherSoFar = ""
+  const cipherList: string[] = []
+
 
   for (let i = 0; i < plaintext.length; i++) {
     const pChar = plaintext[i]
@@ -37,6 +39,7 @@ function generateVernamSteps(plaintext: string, key: string): VernamStep[] {
         ? String.fromCharCode(cipherCharCode)
         : `\\x${cipherCharCode.toString(16).padStart(2, "0")}`
     cipherSoFar += cipherChar.length === 1 ? cipherChar : "?"
+    cipherList.push(cipherCharCode.toString(16))
 
     steps.push({
       charIndex: i,
@@ -46,6 +49,7 @@ function generateVernamSteps(plaintext: string, key: string): VernamStep[] {
       keyBinary: kBin,
       xorBinary: xBin,
       cipherChar,
+      cipherList: [...cipherList],
       cipherSoFar,
       phase: "result",
       description: `Paso ${i + 1}: '${pChar}' (${pBin}) XOR '${kChar}' (${kBin}) = ${xBin} -> '${cipherChar}'`,
