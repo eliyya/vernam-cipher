@@ -120,12 +120,12 @@ const initialCells: CellData[] = [
  * Requisito: key.length >= plaintext.length para
  * seguridad perfecta (One-Time Pad).
  */
-function vernamEncrypt(plaintext: string, key: string): number[] {
+function vernamEncrypt(plaintext: string, key: number[]): number[] {
   const ciphertext: number[] = []
   for (let i = 0; i < plaintext.length; i++) {
     const keyChar = key[i % key.length]
     // XOR entre los code points
-    const encrypted = plaintext.charCodeAt(i) ^ keyChar.charCodeAt(0)
+    const encrypted = plaintext.charCodeAt(i) ^ keyChar
     ciphertext.push(encrypted)
   }
   return ciphertext
@@ -135,11 +135,12 @@ function vernamEncrypt(plaintext: string, key: string): number[] {
  * Descifra un texto cifrado usando el cifrado Vernam.
  * XOR es su propia inversa: cipher XOR key = plaintext
  */
-function vernamDecrypt(ciphertext: number[], key: string): string {
+function vernamDecrypt(ciphertext: number[], key: number[]): string {
   const plaintext: string[] = []
   for (let i = 0; i < ciphertext.length; i++) {
     const keyChar = key[i % key.length]
-    const decrypted = ciphertext[i] ^ keyChar.charCodeAt(0)
+    // XOR entre los code points
+    const decrypted = ciphertext[i] ^ keyChar
     plaintext.push(String.fromCharCode(decrypted))
   }
   return plaintext.join("")
@@ -154,10 +155,11 @@ function vernamDecrypt(ciphertext: number[], key: string): string {
     type: "code",
     code: `// Ejemplo de cifrado y descifrado
 const plaintext: string = "HOLA"
-const key: string = "CLAVE"
+const keyString: string = "CLAVE"
+const key: number[] = Array.from(keyString).map((c) => c.charCodeAt(0))
 
 console.log(\`Texto plano:    '\${plaintext}'\`)
-console.log(\`Clave:          '\${key}'\`)
+console.log(\`Clave:          '\${keyString}'\`)
 console.log()
 
 // Cifrar
@@ -194,7 +196,7 @@ visualizeVernamXor("HOLA", "CLAVE")`,
     id: "cell-4",
     type: "code",
     code: `// Tabla detallada de la operacion XOR
-function printXorTable(plaintext: string, key: string): void {
+function printXorTable(plaintext: string, key: number[]): void {
   console.log("Tabla de cifrado XOR caracter a caracter")
   console.log("=".repeat(60))
 
@@ -229,18 +231,18 @@ printXorTable("HOLA", "CLAVE")`,
 // Esta propiedad fundamental permite usar la misma operacion
 // para cifrar y descifrar.
 
-function demoXorInverse(plaintext: string, key: string): void {
+function demoXorInverse(plaintext: string, key: number[]): void {
   console.log("Propiedad fundamental: A ^ B ^ B === A")
   console.log("=".repeat(50))
 
   for (let i = 0; i < plaintext.length; i++) {
     const p: string = plaintext[i]
-    const k: string = key[i % key.length]
-    const cipherVal: number = p.charCodeAt(0) ^ k.charCodeAt(0)
-    const decryptVal: number = cipherVal ^ k.charCodeAt(0)
+    const k: number = key[i % key.length]
+    const cipherVal: number = p.charCodeAt(0) ^ k
+    const decryptVal: number = cipherVal ^ k
 
     const pBin: string = p.charCodeAt(0).toString(2).padStart(8, "0")
-    const kBin: string = k.charCodeAt(0).toString(2).padStart(8, "0")
+    const kBin: string = k.toString(2).padStart(8, "0")
     const cBin: string = cipherVal.toString(2).padStart(8, "0")
     const dBin: string = decryptVal.toString(2).padStart(8, "0")
     const oChr: string = String.fromCharCode(decryptVal)
@@ -261,17 +263,17 @@ demoXorInverse("HOLA", "CLAVE")`,
     id: "cell-6",
     type: "code",
     code: `// Verificacion de descifrado paso a paso
-function verifyDecryption(plaintext: string, key: string): void {
+function verifyDecryption(plaintext: string, key: number[]): void {
   console.log("Tabla de descifrado (Cifrado ^ Clave = Texto plano)")
   console.log("=".repeat(55))
 
   const cipher: number[] = vernamEncrypt(plaintext, key)
 
   cipher.forEach((cVal: number, i: number) => {
-    const k: string = key[i % key.length]
+    const k: number = key[i % key.length]
     const cBin: string = cVal.toString(2).padStart(8, "0")
-    const kBin: string = k.charCodeAt(0).toString(2).padStart(8, "0")
-    const dVal: number = cVal ^ k.charCodeAt(0)
+    const kBin: string = k.toString(2).padStart(8, "0")
+    const dVal: number = cVal ^ k
     const dBin: string = dVal.toString(2).padStart(8, "0")
     const dChar: string = String.fromCharCode(dVal)
 
@@ -279,7 +281,10 @@ function verifyDecryption(plaintext: string, key: string): void {
   })
 }
 
-verifyDecryption("HOLA", "CLAVE")`,
+const text = "HOLA"
+const keyString = "CLAVE"
+const key = Array.from(keyString).map(c => c.charCodeAt(0))
+verifyDecryption(text, key)`,
     output: undefined,
     executionCount: null,
     isRunning: false,

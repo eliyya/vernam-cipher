@@ -352,8 +352,8 @@ export function CodeCell({ cell, onRun, onDelete, onFocus }: CodeCellProps) {
     <div
       className={`group relative rounded-lg border transition-all duration-200 ${
         cell.isActive
-          ? "border-primary/40 bg-[var(--cell-active)]"
-          : "border-border bg-card hover:border-border/80 hover:bg-[var(--cell-hover)]"
+          ? "border-primary/40 bg-(--cell-active)"
+          : "border-border bg-card hover:border-border/80 hover:bg-(--cell-hover)"
       }`}
       onClick={() => onFocus(cell.id)}
       role="button"

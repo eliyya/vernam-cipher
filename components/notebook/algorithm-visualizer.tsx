@@ -188,13 +188,11 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
       <div className="mb-4 rounded-md bg-background/60 px-4 py-3">
         <div className="mb-1 text-xs font-mono text-muted-foreground">Texto cifrado acumulado en hexadecimal:</div>
         <div className="flex gap-0.5 flex-wrap">
-          {step.cipherList.map((ch, i) => {
-            console.log(step);
-            
+          {step.cipherList.map((ch, i) => {            
             return (
             <span
               key={i}
-              className="flex h-8 min-w-[2rem] items-center justify-center rounded text-sm font-mono font-bold transition-all duration-300"
+              className="flex h-8 min-w-8 items-center justify-center rounded text-sm font-mono font-bold transition-all duration-300"
               style={{
                 backgroundColor:
                   i === step.charIndex ? "var(--syntax-number)" : "var(--secondary)",
@@ -273,7 +271,7 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
         />
 
         {/* Progress bar */}
-        <div className="ml-auto flex-1 max-w-[200px]">
+        <div className="ml-auto flex-1 max-w-50">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
             <div
               className="h-full rounded-full bg-primary transition-all duration-300"
