@@ -32,7 +32,6 @@ function generateVernamSteps(plaintext: string, key: string): VernamStep[] {
     const kBin = charToBinary(kChar)
     const xBin = xorBinary(pBin, kBin)
     const cipherCharCode = parseInt(xBin, 2)
-    // Show printable or hex
     const cipherChar =
       cipherCharCode >= 33 && cipherCharCode <= 126
         ? String.fromCharCode(cipherCharCode)
@@ -90,7 +89,6 @@ function buildDecryptTable(plain: string, key: string) {
     const pBin = charToBinary(p)
     const kBin = charToBinary(k)
     const cBin = xorBinary(pBin, kBin)
-    // decrypt: cipher XOR key = plain
     const dBin = xorBinary(cBin, kBin)
     const dChar = String.fromCharCode(parseInt(dBin, 2))
     rows.push([i, cBin, k, kBin, dBin, dChar])
@@ -108,36 +106,40 @@ const initialCells: CellData[] = [
   {
     id: "cell-1",
     type: "code",
-    code: `# Cifrado Vernam (One-Time Pad) - Implementacion
-def vernam_encrypt(plaintext, key):
-    """
-    Cifrado Vernam usando operacion XOR.
-    
-    Cada caracter del texto plano se combina con
-    el caracter correspondiente de la clave mediante XOR.
-    
-    Requisito: len(key) >= len(plaintext) para 
-    seguridad perfecta (One-Time Pad).
-    """
-    ciphertext = []
-    for i, char in enumerate(plaintext):
-        key_char = key[i % len(key)]
-        # XOR entre los valores ASCII
-        encrypted = ord(char) ^ ord(key_char)
-        ciphertext.append(encrypted)
-    return ciphertext
+    code: `// Cifrado Vernam (One-Time Pad) - Implementacion en TypeScript
 
-def vernam_decrypt(ciphertext, key):
-    """
-    Descifrado Vernam: XOR es su propia inversa.
-    cipher XOR key = plaintext
-    """
-    plaintext = []
-    for i, code in enumerate(ciphertext):
-        key_char = key[i % len(key)]
-        decrypted = code ^ ord(key_char)
-        plaintext.append(chr(decrypted))
-    return ''.join(plaintext)`,
+/**
+ * Cifra un texto plano usando el cifrado Vernam (XOR).
+ * Cada caracter se combina con el caracter correspondiente
+ * de la clave mediante la operacion XOR bit a bit.
+ *
+ * Requisito: key.length >= plaintext.length para
+ * seguridad perfecta (One-Time Pad).
+ */
+function vernamEncrypt(plaintext: string, key: string): number[] {
+  const ciphertext: number[] = []
+  for (let i = 0; i < plaintext.length; i++) {
+    const keyChar = key[i % key.length]
+    // XOR entre los code points
+    const encrypted = plaintext.charCodeAt(i) ^ keyChar.charCodeAt(0)
+    ciphertext.push(encrypted)
+  }
+  return ciphertext
+}
+
+/**
+ * Descifra un texto cifrado usando el cifrado Vernam.
+ * XOR es su propia inversa: cipher XOR key = plaintext
+ */
+function vernamDecrypt(ciphertext: number[], key: string): string {
+  const plaintext: string[] = []
+  for (let i = 0; i < ciphertext.length; i++) {
+    const keyChar = key[i % key.length]
+    const decrypted = ciphertext[i] ^ keyChar.charCodeAt(0)
+    plaintext.push(String.fromCharCode(decrypted))
+  }
+  return plaintext.join("")
+}`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -146,25 +148,28 @@ def vernam_decrypt(ciphertext, key):
   {
     id: "cell-2",
     type: "code",
-    code: `# Ejemplo de cifrado y descifrado
-plaintext = "HOLA"
-key = "CLAVE"
+    code: `// Ejemplo de cifrado y descifrado
+const plaintext: string = "HOLA"
+const key: string = "CLAVE"
 
-print(f"Texto plano:    '{plaintext}'")
-print(f"Clave:          '{key}'")
-print()
+console.log(\`Texto plano:    '\${plaintext}'\`)
+console.log(\`Clave:          '\${key}'\`)
+console.log()
 
-# Cifrar
-cipher = vernam_encrypt(plaintext, key)
-cipher_hex = ' '.join(f'0x{c:02x}' for c in cipher)
-print(f"Cifrado (dec):  {cipher}")
-print(f"Cifrado (hex):  {cipher_hex}")
-print()
+// Cifrar
+const cipher: number[] = vernamEncrypt(plaintext, key)
+const cipherHex: string = cipher
+  .map((c) => \`0x\${c.toString(16).padStart(2, "0")}\`)
+  .join(" ")
 
-# Descifrar
-recovered = vernam_decrypt(cipher, key)
-print(f"Descifrado:     '{recovered}'")
-print(f"Verificacion:   {recovered == plaintext}")`,
+console.log(\`Cifrado (dec):  [\${cipher.join(", ")}]\`)
+console.log(\`Cifrado (hex):  \${cipherHex}\`)
+console.log()
+
+// Descifrar
+const recovered: string = vernamDecrypt(cipher, key)
+console.log(\`Descifrado:     '\${recovered}'\`)
+console.log(\`Verificacion:   \${recovered === plaintext}\`)`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -173,9 +178,9 @@ print(f"Verificacion:   {recovered == plaintext}")`,
   {
     id: "cell-3",
     type: "code",
-    code: `# Visualizacion paso a paso del XOR
-# Ejecuta esta celda para ver la animacion
-visualize_vernam_xor("HOLA", "CLAVE")`,
+    code: `// Visualizacion paso a paso del XOR
+// Ejecuta esta celda para ver la animacion interactiva
+visualizeVernamXor("HOLA", "CLAVE")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -184,21 +189,30 @@ visualize_vernam_xor("HOLA", "CLAVE")`,
   {
     id: "cell-4",
     type: "code",
-    code: `# Tabla detallada de la operacion XOR
-print("Tabla de cifrado XOR caracter a caracter")
-print("=" * 60)
-print(f"{'Pos':>3} | {'Plain':>5} | {'P.Bin':>10} | {'Key':>3} | {'K.Bin':>10} | {'XOR':>10} | {'Dec':>4} | Cipher")
-print("-" * 60)
+    code: `// Tabla detallada de la operacion XOR
+function printXorTable(plaintext: string, key: string): void {
+  console.log("Tabla de cifrado XOR caracter a caracter")
+  console.log("=".repeat(60))
 
-for i in range(len(plaintext)):
-    p = plaintext[i]
-    k = key[i % len(key)]
-    p_bin = format(ord(p), '08b')
-    k_bin = format(ord(k), '08b')
-    xor_bin = format(ord(p) ^ ord(k), '08b')
-    xor_dec = ord(p) ^ ord(k)
-    c = chr(xor_dec) if 33 <= xor_dec <= 126 else f'0x{xor_dec:02x}'
-    print(f"{i:>3} |   {p:>3} | {p_bin:>10} | {k:>3} | {k_bin:>10} | {xor_bin:>10} | {xor_dec:>4} | {c}")`,
+  for (let i = 0; i < plaintext.length; i++) {
+    const p: string = plaintext[i]
+    const k: string = key[i % key.length]
+    const pBin: string = p.charCodeAt(0).toString(2).padStart(8, "0")
+    const kBin: string = k.charCodeAt(0).toString(2).padStart(8, "0")
+    const xorVal: number = p.charCodeAt(0) ^ k.charCodeAt(0)
+    const xorBin: string = xorVal.toString(2).padStart(8, "0")
+    const c: string =
+      xorVal >= 33 && xorVal <= 126
+        ? String.fromCharCode(xorVal)
+        : \`0x\${xorVal.toString(16).padStart(2, "0")}\`
+
+    console.log(
+      \`  \${i} | '\${p}' \${pBin} | '\${k}' \${kBin} | \${xorBin} \${xorVal} -> '\${c}'\`
+    )
+  }
+}
+
+printXorTable("HOLA", "CLAVE")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -207,27 +221,32 @@ for i in range(len(plaintext)):
   {
     id: "cell-5",
     type: "code",
-    code: `# Demostracion: XOR es su propia inversa
-# Esta propiedad fundamental permite usar la misma operacion
-# para cifrar y descifrar.
+    code: `// Demostracion: XOR es su propia inversa
+// Esta propiedad fundamental permite usar la misma operacion
+// para cifrar y descifrar.
 
-print("Propiedad fundamental: A XOR B XOR B = A")
-print("=" * 50)
+function demoXorInverse(plaintext: string, key: string): void {
+  console.log("Propiedad fundamental: A ^ B ^ B === A")
+  console.log("=".repeat(50))
 
-for i in range(len(plaintext)):
-    p = plaintext[i]
-    k = key[i % len(key)]
-    cipher_val = ord(p) ^ ord(k)
-    decrypt_val = cipher_val ^ ord(k)
-    
-    p_bin = format(ord(p), '08b')
-    k_bin = format(ord(k), '08b')
-    c_bin = format(cipher_val, '08b')
-    d_bin = format(decrypt_val, '08b')
-    
-    print(f"'{p}' ({p_bin}) XOR '{k}' ({k_bin}) = {c_bin} (cifrado)")
-    print(f"    {c_bin}  XOR '{k}' ({k_bin}) = {d_bin} -> '{chr(decrypt_val)}'")
-    print()`,
+  for (let i = 0; i < plaintext.length; i++) {
+    const p: string = plaintext[i]
+    const k: string = key[i % key.length]
+    const cipherVal: number = p.charCodeAt(0) ^ k.charCodeAt(0)
+    const decryptVal: number = cipherVal ^ k.charCodeAt(0)
+
+    const pBin: string = p.charCodeAt(0).toString(2).padStart(8, "0")
+    const kBin: string = k.charCodeAt(0).toString(2).padStart(8, "0")
+    const cBin: string = cipherVal.toString(2).padStart(8, "0")
+    const dBin: string = decryptVal.toString(2).padStart(8, "0")
+
+    console.log(\`'\${p}' (\${pBin}) ^ '\${k}' (\${kBin}) = \${cBin} (cifrado)\`)
+    console.log(\`    \${cBin}  ^ '\${k}' (\${kBin}) = \${dBin} -> '\${String.fromCharCode(decryptVal)}'\`)
+    console.log()
+  }
+}
+
+demoXorInverse("HOLA", "CLAVE")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -236,18 +255,26 @@ for i in range(len(plaintext)):
   {
     id: "cell-6",
     type: "code",
-    code: `# Verificacion de descifrado paso a paso
-print("Tabla de descifrado (Cifrado XOR Clave = Texto plano)")
-print("=" * 55)
+    code: `// Verificacion de descifrado paso a paso
+function verifyDecryption(plaintext: string, key: string): void {
+  console.log("Tabla de descifrado (Cifrado ^ Clave = Texto plano)")
+  console.log("=".repeat(55))
 
-cipher = vernam_encrypt(plaintext, key)
-for i, c_val in enumerate(cipher):
-    k = key[i % len(key)]
-    c_bin = format(c_val, '08b')
-    k_bin = format(ord(k), '08b')
-    d_bin = format(c_val ^ ord(k), '08b')
-    d_char = chr(c_val ^ ord(k))
-    print(f"  {c_bin} XOR '{k}' ({k_bin}) = {d_bin} -> '{d_char}'")`,
+  const cipher: number[] = vernamEncrypt(plaintext, key)
+
+  cipher.forEach((cVal: number, i: number) => {
+    const k: string = key[i % key.length]
+    const cBin: string = cVal.toString(2).padStart(8, "0")
+    const kBin: string = k.charCodeAt(0).toString(2).padStart(8, "0")
+    const dVal: number = cVal ^ k.charCodeAt(0)
+    const dBin: string = dVal.toString(2).padStart(8, "0")
+    const dChar: string = String.fromCharCode(dVal)
+
+    console.log(\`  \${cBin} ^ '\${k}' (\${kBin}) = \${dBin} -> '\${dChar}'\`)
+  })
+}
+
+verifyDecryption("HOLA", "CLAVE")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -256,29 +283,42 @@ for i, c_val in enumerate(cipher):
   {
     id: "cell-7",
     type: "code",
-    code: `# Importancia de la clave aleatoria y de un solo uso
-import os
+    code: `// Seguridad: One-Time Pad con clave aleatoria
+// Usando crypto.getRandomValues() para generar claves seguras
 
-def generate_otp_key(length):
-    """Genera una clave verdaderamente aleatoria."""
-    return bytes(os.urandom(length))
+function generateOtpKey(length: number): Uint8Array {
+  // Genera una clave verdaderamente aleatoria (CSPRNG)
+  const key = new Uint8Array(length)
+  crypto.getRandomValues(key)
+  return key
+}
 
-message = "SECRETO"
-otp_key = generate_otp_key(len(message))
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
 
-print(f"Mensaje:         '{message}'")
-print(f"Clave OTP (hex): {otp_key.hex()}")
+const message: string = "SECRETO"
+const otpKey: Uint8Array = generateOtpKey(message.length)
 
-# Cifrar con OTP
-cipher_otp = bytes(ord(c) ^ k for c, k in zip(message, otp_key))
-print(f"Cifrado (hex):   {cipher_otp.hex()}")
+console.log(\`Mensaje:         '\${message}'\`)
+console.log(\`Clave OTP (hex): \${toHex(otpKey)}\`)
 
-# Descifrar con OTP
-decrypted = ''.join(chr(c ^ k) for c, k in zip(cipher_otp, otp_key))
-print(f"Descifrado:      '{decrypted}'")
-print()
-print("NOTA: Si la clave es aleatoria y de un solo uso,")
-print("el cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)")`,
+// Cifrar con OTP
+const cipherOtp: Uint8Array = new Uint8Array(
+  message.split("").map((c, i) => c.charCodeAt(0) ^ otpKey[i])
+)
+console.log(\`Cifrado (hex):   \${toHex(cipherOtp)}\`)
+
+// Descifrar con OTP
+const decrypted: string = Array.from(cipherOtp)
+  .map((c, i) => String.fromCharCode(c ^ otpKey[i]))
+  .join("")
+console.log(\`Descifrado:      '\${decrypted}'\`)
+console.log()
+console.log("NOTA: Si la clave es aleatoria y de un solo uso,")
+console.log("el cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -288,7 +328,6 @@ print("el cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)")`,
 
 // Simulated outputs for each cell
 function getSimulatedOutput(cellId: string): string | React.ReactNode {
-  // Precompute cipher values for HOLA with CLAVE
   const cipherVals = PLAIN.split("").map((ch, i) => ch.charCodeAt(0) ^ KEY.charCodeAt(i % KEY.length))
   const cipherHex = cipherVals.map((v) => `0x${v.toString(16).padStart(2, "0")}`).join(" ")
 
@@ -296,7 +335,7 @@ function getSimulatedOutput(cellId: string): string | React.ReactNode {
     case "cell-1":
       return ""
     case "cell-2":
-      return `Texto plano:    'HOLA'\nClave:          'CLAVE'\n\nCifrado (dec):  [${cipherVals.join(", ")}]\nCifrado (hex):  ${cipherHex}\n\nDescifrado:     'HOLA'\nVerificacion:   True`
+      return `Texto plano:    'HOLA'\nClave:          'CLAVE'\n\nCifrado (dec):  [${cipherVals.join(", ")}]\nCifrado (hex):  ${cipherHex}\n\nDescifrado:     'HOLA'\nVerificacion:   true`
     case "cell-3":
       return <AlgorithmVisualizer steps={vernamSteps} />
     case "cell-4":
@@ -309,7 +348,7 @@ function getSimulatedOutput(cellId: string): string | React.ReactNode {
       )
     case "cell-5": {
       const lines: string[] = []
-      lines.push("Propiedad fundamental: A XOR B XOR B = A")
+      lines.push("Propiedad fundamental: A ^ B ^ B === A")
       lines.push("=".repeat(50))
       for (let i = 0; i < PLAIN.length; i++) {
         const p = PLAIN[i]
@@ -320,8 +359,8 @@ function getSimulatedOutput(cellId: string): string | React.ReactNode {
         const kBin = k.charCodeAt(0).toString(2).padStart(8, "0")
         const cBin = cVal.toString(2).padStart(8, "0")
         const dBin = dVal.toString(2).padStart(8, "0")
-        lines.push(`'${p}' (${pBin}) XOR '${k}' (${kBin}) = ${cBin} (cifrado)`)
-        lines.push(`    ${cBin}  XOR '${k}' (${kBin}) = ${dBin} -> '${String.fromCharCode(dVal)}'`)
+        lines.push(`'${p}' (${pBin}) ^ '${k}' (${kBin}) = ${cBin} (cifrado)`)
+        lines.push(`    ${cBin}  ^ '${k}' (${kBin}) = ${dBin} -> '${String.fromCharCode(dVal)}'`)
         lines.push("")
       }
       return lines.join("\n")
@@ -329,13 +368,13 @@ function getSimulatedOutput(cellId: string): string | React.ReactNode {
     case "cell-6":
       return (
         <TableOutput
-          caption="Tabla de descifrado (Cifrado XOR Clave = Texto plano)"
+          caption="Tabla de descifrado (Cifrado ^ Clave = Texto plano)"
           headers={["Pos", "Cifrado", "Key", "K.Bin", "Descifrado", "Char"]}
           rows={decryptTableRows}
         />
       )
     case "cell-7":
-      return `Mensaje:         'SECRETO'\nClave OTP (hex): a3f1c7d98b2e05\nCifrado (hex):   f094a5bc e84f70\nDescifrado:      'SECRETO'\n\nNOTA: Si la clave es aleatoria y de un solo uso,\nel cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)`
+      return `Mensaje:         'SECRETO'\nClave OTP (hex): a3f1c7d98b2e05\nCifrado (hex):   f094a5bce84f70\nDescifrado:      'SECRETO'\n\nNOTA: Si la clave es aleatoria y de un solo uso,\nel cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)`
     default:
       return ""
   }
@@ -408,9 +447,9 @@ export default function NotebookPage() {
     {
       type: "markdown",
       content:
-        "Este notebook demuestra el **Cifrado Vernam** paso a paso con visualizacion interactiva de la operacion XOR a nivel de bits. El cifrado Vernam es el unico sistema criptografico demostrado como **teoricamente irrompible** cuando se usa correctamente (Claude Shannon, 1949).\n\n### Principio Fundamental\n- Cada caracter del texto plano se combina con un caracter de la clave mediante la operacion **XOR** (OR exclusivo)\n- La operacion XOR es **su propia inversa**: `A XOR B XOR B = A`\n- **Requisito de seguridad perfecta:** la clave debe ser aleatoria, de un solo uso y de la misma longitud que el mensaje",
+        "Este notebook demuestra el **Cifrado Vernam** paso a paso con visualizacion interactiva de la operacion XOR a nivel de bits. El cifrado Vernam es el unico sistema criptografico demostrado como **teoricamente irrompible** cuando se usa correctamente (Claude Shannon, 1949).\n\n### Principio Fundamental\n- Cada caracter del texto plano se combina con un caracter de la clave mediante la operacion **XOR** (OR exclusivo)\n- La operacion XOR es **su propia inversa**: `A ^ B ^ B === A`\n- **Requisito de seguridad perfecta:** la clave debe ser aleatoria, de un solo uso y de la misma longitud que el mensaje",
     },
-    { type: "markdown", content: "## Implementacion" },
+    { type: "markdown", content: "## Implementacion en TypeScript" },
     { type: "code", cell: cells[0] },
     { type: "markdown", content: "### Cifrado y Descifrado\nEjemplo con texto `\"HOLA\"` y clave `\"CLAVE\"`." },
     { type: "code", cell: cells[1] },
@@ -422,14 +461,14 @@ export default function NotebookPage() {
     { type: "code", cell: cells[4] },
     { type: "markdown", content: "## Verificacion del Descifrado\nTabla paso a paso del proceso inverso: aplicamos XOR del texto cifrado con la clave para recuperar el texto original." },
     { type: "code", cell: cells[5] },
-    { type: "markdown", content: "## Seguridad: One-Time Pad\nPara que el cifrado Vernam sea **teoricamente irrompible**, la clave debe ser:\n- **Aleatoria** - generada con un CSPRNG (generador criptografico)\n- **De un solo uso** - nunca reutilizar la clave\n- **Igual o mayor longitud** que el mensaje" },
+    { type: "markdown", content: "## Seguridad: One-Time Pad\nPara que el cifrado Vernam sea **teoricamente irrompible**, la clave debe ser:\n- **Aleatoria** - generada con `crypto.getRandomValues()` (CSPRNG)\n- **De un solo uso** - nunca reutilizar la clave\n- **Igual o mayor longitud** que el mensaje" },
     { type: "code", cell: cells[6] },
   ]
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <NotebookHeader
-        title="cifrado_vernam_otp"
+        title="cifrado_vernam_otp.ts"
         onRunAll={runAll}
         onReset={resetAll}
         isRunning={kernelStatus === "busy"}
@@ -476,7 +515,7 @@ export default function NotebookPage() {
           <span>
             {cells.filter((c) => c.executionCount !== null).length} / {cells.length} celdas ejecutadas
           </span>
-          <span>Python 3.11.4 | Criptografia</span>
+          <span>TypeScript 5.6 | Deno Runtime</span>
         </div>
       </footer>
     </div>

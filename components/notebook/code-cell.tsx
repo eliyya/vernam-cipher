@@ -35,8 +35,8 @@ function highlightSyntax(code: string): React.ReactNode[] {
     let idx = 0
 
     while (remaining.length > 0) {
-      // Comments
-      if (remaining.match(/^#.*/)) {
+      // Single-line comments ( // )
+      if (remaining.match(/^\/\/.*/)) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-comment)", fontStyle: "italic" }}>
             {remaining}
@@ -46,8 +46,10 @@ function highlightSyntax(code: string): React.ReactNode[] {
         continue
       }
 
-      // Strings (double and single quoted)
-      const strMatch = remaining.match(/^(["'`])(?:(?!\1|\\).|\\.)*\1/) || remaining.match(/^f(["'])(?:(?!\1|\\).|\\.)*\1/)
+      // Strings (double, single, backtick)
+      const strMatch =
+        remaining.match(/^(["'`])(?:(?!\1|\\).|\\.)*\1/) ||
+        remaining.match(/^`(?:[^`\\]|\\.)*`/)
       if (strMatch) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-string)" }}>
@@ -59,8 +61,10 @@ function highlightSyntax(code: string): React.ReactNode[] {
         continue
       }
 
-      // Keywords
-      const kwMatch = remaining.match(/^(def|class|return|if|elif|else|for|while|in|import|from|as|with|try|except|finally|raise|yield|lambda|and|or|not|is|None|True|False|print|range|len|sorted|enumerate|zip|list|dict|set|tuple|int|float|str|type)\b/)
+      // TypeScript / JS keywords
+      const kwMatch = remaining.match(
+        /^(function|const|let|var|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|import|export|from|as|default|class|extends|implements|interface|type|enum|namespace|async|await|yield|try|catch|finally|throw|void|delete|in|of|true|false|null|undefined|this|super|static|readonly|public|private|protected|abstract|declare|module|require|keyof|infer|never|unknown|any|number|string|boolean|bigint|symbol|object|Record|Array|Map|Set|Promise|Uint8Array)\b/
+      )
       if (kwMatch) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-keyword)" }}>
@@ -68,6 +72,19 @@ function highlightSyntax(code: string): React.ReactNode[] {
           </span>
         )
         remaining = remaining.slice(kwMatch[0].length)
+        idx++
+        continue
+      }
+
+      // Type annotations after colon (e.g., : string, : number[])
+      const typeAnnotation = remaining.match(/^:\s*(string|number|boolean|void|any|never|unknown|Uint8Array|Array|Record|Map|Set|Promise)(\[\])?/)
+      if (typeAnnotation) {
+        tokens.push(
+          <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-keyword)", fontStyle: "italic" }}>
+            {typeAnnotation[0]}
+          </span>
+        )
+        remaining = remaining.slice(typeAnnotation[0].length)
         idx++
         continue
       }
@@ -85,8 +102,8 @@ function highlightSyntax(code: string): React.ReactNode[] {
         continue
       }
 
-      // Numbers
-      const numMatch = remaining.match(/^(\d+\.?\d*|\.\d+)/)
+      // Numbers (hex, binary, decimal)
+      const numMatch = remaining.match(/^(0x[0-9a-fA-F]+|0b[01]+|\d+\.?\d*|\.\d+)/)
       if (numMatch) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-number)" }}>
@@ -99,7 +116,7 @@ function highlightSyntax(code: string): React.ReactNode[] {
       }
 
       // Operators
-      const opMatch = remaining.match(/^(==|!=|<=|>=|=>|->|\+\+|--|[+\-*/%=<>!&|^~])/)
+      const opMatch = remaining.match(/^(===|!==|==|!=|<=|>=|=>|\?\?|\?\.|&&|\|\||[+\-*/%=<>!&|^~])/)
       if (opMatch) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-operator)" }}>
@@ -111,15 +128,15 @@ function highlightSyntax(code: string): React.ReactNode[] {
         continue
       }
 
-      // Self / decorators
-      const selfMatch = remaining.match(/^(self|cls|@\w+)/)
-      if (selfMatch) {
+      // Decorators / @
+      const decoMatch = remaining.match(/^@\w+/)
+      if (decoMatch) {
         tokens.push(
           <span key={`${lineIndex}-${idx}`} style={{ color: "var(--syntax-keyword)", fontStyle: "italic" }}>
-            {selfMatch[0]}
+            {decoMatch[0]}
           </span>
         )
-        remaining = remaining.slice(selfMatch[0].length)
+        remaining = remaining.slice(decoMatch[0].length)
         idx++
         continue
       }
@@ -191,6 +208,10 @@ export function CodeCell({ cell, onRun, onDelete, onFocus }: CodeCellProps) {
           <span className="font-mono text-xs" style={{ color: "var(--execution-count)" }}>
             {cell.isRunning ? "[*]" : cell.executionCount !== null ? `[${cell.executionCount}]` : "[ ]"}
           </span>
+
+          <span className="rounded bg-secondary/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            TypeScript
+          </span>
         </div>
 
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -218,7 +239,7 @@ export function CodeCell({ cell, onRun, onDelete, onFocus }: CodeCellProps) {
                 className="text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete Cell
+                Eliminar Celda
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

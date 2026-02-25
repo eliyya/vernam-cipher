@@ -30,7 +30,7 @@ export function NotebookHeader({
         <BookOpen className="h-5 w-5 text-primary" />
         <h1 className="text-lg font-semibold text-foreground font-mono">{title}</h1>
         <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-mono text-muted-foreground">
-          .ipynb
+          .ts
         </span>
       </div>
 
@@ -45,11 +45,11 @@ export function NotebookHeader({
           <DropdownMenuContent align="end">
             <DropdownMenuItem>
               <Save className="mr-2 h-4 w-4" />
-              Save Notebook
+              Guardar Notebook
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Download className="mr-2 h-4 w-4" />
-              Export as Python
+              Exportar como .ts
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -90,7 +90,7 @@ export function NotebookHeader({
             }`}
           />
           <span className="text-xs font-mono text-muted-foreground">
-            Python 3 | {kernelStatus}
+            TypeScript 5.6 | {kernelStatus}
           </span>
         </div>
       </div>
