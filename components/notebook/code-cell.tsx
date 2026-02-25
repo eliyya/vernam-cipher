@@ -141,6 +141,19 @@ function highlightSyntax(code: string): React.ReactNode[] {
         continue
       }
 
+      // Whitespace: preserve leading and inline spaces/tabs as a single token
+      const wsMatch = remaining.match(/^[ \t]+/)
+      if (wsMatch) {
+        tokens.push(
+          <span key={`${lineIndex}-${idx}`} style={{ whiteSpace: "pre" }}>
+            {wsMatch[0]}
+          </span>
+        )
+        remaining = remaining.slice(wsMatch[0].length)
+        idx++
+        continue
+      }
+
       // Default: single character
       tokens.push(
         <span key={`${lineIndex}-${idx}`} style={{ color: "var(--foreground)" }}>
@@ -159,7 +172,7 @@ function highlightSyntax(code: string): React.ReactNode[] {
         >
           {lineIndex + 1}
         </span>
-        <span className="flex-1">{tokens}</span>
+        <span className="flex-1" style={{ whiteSpace: "pre" }}>{tokens}</span>
       </div>
     )
   })
