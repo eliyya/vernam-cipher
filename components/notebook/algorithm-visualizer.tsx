@@ -5,25 +5,79 @@ import { Play, Pause, SkipForward, SkipBack, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 
-interface AlgorithmStep {
-  array: number[]
-  comparing: number[]
-  swapping: number[]
-  sorted: number[]
+export interface VernamStep {
+  charIndex: number
+  plainChar: string
+  keyChar: string
+  plainBinary: string
+  keyBinary: string
+  xorBinary: string
+  cipherChar: string
+  cipherSoFar: string
   description: string
+  phase: "idle" | "show-plain" | "show-key" | "xor" | "result"
 }
 
 interface AlgorithmVisualizerProps {
-  steps: AlgorithmStep[]
+  steps: VernamStep[]
+}
+
+function BinaryDisplay({
+  label,
+  binary,
+  color,
+  charLabel,
+  highlightXor,
+  xorWith,
+}: {
+  label: string
+  binary: string
+  color: string
+  charLabel: string
+  highlightXor?: boolean
+  xorWith?: string
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-20 text-right text-xs font-mono text-muted-foreground">{label}</span>
+      <span
+        className="w-8 text-center text-sm font-mono font-bold"
+        style={{ color }}
+      >
+        {`'${charLabel}'`}
+      </span>
+      <div className="flex gap-0.5">
+        {binary.split("").map((bit, i) => {
+          const isXorDiff = highlightXor && xorWith && xorWith[i] !== bit
+          return (
+            <span
+              key={i}
+              className="flex h-8 w-8 items-center justify-center rounded text-sm font-mono font-bold transition-all duration-300"
+              style={{
+                backgroundColor: isXorDiff
+                  ? "var(--syntax-number)"
+                  : "var(--secondary)",
+                color: isXorDiff
+                  ? "var(--background)"
+                  : color,
+                boxShadow: isXorDiff ? "0 0 8px var(--syntax-number)" : "none",
+              }}
+            >
+              {bit}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState(500)
+  const [speed, setSpeed] = useState(600)
 
   const step = steps[currentStep]
-  const maxVal = Math.max(...step.array)
 
   const nextStep = useCallback(() => {
     setCurrentStep((prev) => {
@@ -50,42 +104,106 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
     return () => clearInterval(interval)
   }, [isPlaying, speed, nextStep])
 
-  function getBarColor(index: number): string {
-    if (step.sorted.includes(index)) return "var(--primary)"
-    if (step.swapping.includes(index)) return "var(--syntax-number)"
-    if (step.comparing.includes(index)) return "var(--accent)"
-    return "var(--muted-foreground)"
-  }
-
-  function getBarGlow(index: number): string {
-    if (step.swapping.includes(index)) return "0 0 12px var(--syntax-number)"
-    if (step.comparing.includes(index)) return "0 0 8px var(--accent)"
-    return "none"
-  }
+  // Extract unique chars processed so far
+  const plaintext = steps.length > 0 ? steps[steps.length - 1].cipherSoFar : ""
 
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      {/* Bar chart visualization */}
-      <div className="mb-4 flex items-end justify-center gap-1.5 h-48 px-4">
-        {step.array.map((value, index) => (
-          <div key={index} className="flex flex-1 flex-col items-center gap-1">
-            <span
-              className="text-xs font-mono font-medium transition-colors duration-200"
-              style={{ color: getBarColor(index) }}
-            >
-              {value}
-            </span>
+      {/* Character position indicator */}
+      <div className="mb-5">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground">Posicion del caracter:</span>
+        </div>
+        <div className="flex gap-1">
+          {plaintext.split("").map((_, i) => (
             <div
-              className="w-full min-w-[20px] rounded-t-sm transition-all duration-300 ease-out"
+              key={i}
+              className="flex h-8 w-8 items-center justify-center rounded text-xs font-mono font-bold transition-all duration-300"
               style={{
-                height: `${(value / maxVal) * 140}px`,
-                backgroundColor: getBarColor(index),
-                boxShadow: getBarGlow(index),
-                opacity: step.sorted.includes(index) ? 1 : 0.85,
+                backgroundColor:
+                  i === step.charIndex
+                    ? "var(--primary)"
+                    : i < step.charIndex
+                      ? "var(--accent)"
+                      : "var(--secondary)",
+                color:
+                  i === step.charIndex
+                    ? "var(--primary-foreground)"
+                    : i < step.charIndex
+                      ? "var(--accent-foreground)"
+                      : "var(--muted-foreground)",
               }}
-            />
+            >
+              {i}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Binary XOR visualization */}
+      <div className="mb-5 flex flex-col gap-3 rounded-md bg-background/60 p-4">
+        <BinaryDisplay
+          label="Texto plano"
+          binary={step.plainBinary}
+          color="var(--primary)"
+          charLabel={step.plainChar}
+        />
+        <BinaryDisplay
+          label="Clave"
+          binary={step.keyBinary}
+          color="var(--accent)"
+          charLabel={step.keyChar}
+          highlightXor
+          xorWith={step.plainBinary}
+        />
+
+        {/* XOR operator line */}
+        <div className="flex items-center gap-3">
+          <span className="w-20 text-right text-xs font-mono text-muted-foreground">XOR</span>
+          <span className="w-8" />
+          <div className="flex gap-0.5">
+            {step.plainBinary.split("").map((_, i) => (
+              <span
+                key={i}
+                className="flex h-3 w-8 items-center justify-center text-xs font-mono text-muted-foreground"
+              >
+                {"^"}
+              </span>
+            ))}
           </div>
-        ))}
+        </div>
+
+        <div className="border-t border-border/50 pt-2">
+          <BinaryDisplay
+            label="Cifrado"
+            binary={step.xorBinary}
+            color="var(--syntax-number)"
+            charLabel={step.cipherChar}
+          />
+        </div>
+      </div>
+
+      {/* Cipher text built so far */}
+      <div className="mb-4 rounded-md bg-background/60 px-4 py-3">
+        <div className="mb-1 text-xs font-mono text-muted-foreground">Texto cifrado acumulado:</div>
+        <div className="flex gap-0.5 flex-wrap">
+          {step.cipherSoFar.split("").map((ch, i) => (
+            <span
+              key={i}
+              className="flex h-8 min-w-[2rem] items-center justify-center rounded text-sm font-mono font-bold transition-all duration-300"
+              style={{
+                backgroundColor:
+                  i === step.charIndex ? "var(--syntax-number)" : "var(--secondary)",
+                color:
+                  i === step.charIndex ? "var(--background)" : "var(--foreground)",
+                boxShadow:
+                  i === step.charIndex ? "0 0 8px var(--syntax-number)" : "none",
+              }}
+            >
+              {ch === " " ? "\u2423" : ch}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Step description */}
@@ -94,7 +212,7 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Button
           variant="ghost"
           size="icon"
@@ -133,12 +251,12 @@ export function AlgorithmVisualizer({ steps }: AlgorithmVisualizerProps) {
         <div className="mx-2 h-4 w-px bg-border" />
 
         <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-          Step {currentStep + 1} / {steps.length}
+          Paso {currentStep + 1} / {steps.length}
         </span>
 
         <div className="mx-2 h-4 w-px bg-border" />
 
-        <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">Speed</span>
+        <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">Velocidad</span>
         <Slider
           className="w-24"
           min={100}

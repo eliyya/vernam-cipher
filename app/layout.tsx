@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Algorithm Notebook - Interactive Code Visualization',
-  description: 'Jupyter Notebook-style interactive code and algorithm visualization',
+  title: 'Cifrado Vernam - Notebook Interactivo',
+  description: 'Visualizacion interactiva del algoritmo de Cifrado Vernam (One-Time Pad) con operaciones XOR paso a paso',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className="font-sans antialiased">
         {children}
         <Analytics />

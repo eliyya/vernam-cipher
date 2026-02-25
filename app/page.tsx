@@ -4,64 +4,101 @@ import { useState, useCallback } from "react"
 import { NotebookHeader } from "@/components/notebook/notebook-header"
 import { CodeCell, type CellData } from "@/components/notebook/code-cell"
 import { MarkdownCell } from "@/components/notebook/markdown-cell"
-import { AlgorithmVisualizer } from "@/components/notebook/algorithm-visualizer"
+import { AlgorithmVisualizer, type VernamStep } from "@/components/notebook/algorithm-visualizer"
 import { TableOutput } from "@/components/notebook/table-output"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-// Generate Bubble Sort steps for the visualizer
-function generateBubbleSortSteps(arr: number[]) {
-  const steps = []
-  const a = [...arr]
-  const sorted: number[] = []
+// --- Vernam Cipher Step Generation ---
+function charToBinary(c: string): string {
+  return c.charCodeAt(0).toString(2).padStart(8, "0")
+}
 
-  steps.push({
-    array: [...a],
-    comparing: [],
-    swapping: [],
-    sorted: [],
-    description: "Initial array - beginning Bubble Sort",
-  })
+function xorBinary(a: string, b: string): string {
+  return a
+    .split("")
+    .map((bit, i) => (bit === b[i] ? "0" : "1"))
+    .join("")
+}
 
-  for (let i = 0; i < a.length - 1; i++) {
-    for (let j = 0; j < a.length - 1 - i; j++) {
-      steps.push({
-        array: [...a],
-        comparing: [j, j + 1],
-        swapping: [],
-        sorted: [...sorted],
-        description: `Comparing arr[${j}]=${a[j]} with arr[${j + 1}]=${a[j + 1]}`,
-      })
+function generateVernamSteps(plaintext: string, key: string): VernamStep[] {
+  const steps: VernamStep[] = []
+  let cipherSoFar = ""
 
-      if (a[j] > a[j + 1]) {
-        const temp = a[j]
-        a[j] = a[j + 1]
-        a[j + 1] = temp
-        steps.push({
-          array: [...a],
-          comparing: [],
-          swapping: [j, j + 1],
-          sorted: [...sorted],
-          description: `Swapped! arr[${j}]=${a[j]} <-> arr[${j + 1}]=${a[j + 1]}`,
-        })
-      }
-    }
-    sorted.push(a.length - 1 - i)
+  for (let i = 0; i < plaintext.length; i++) {
+    const pChar = plaintext[i]
+    const kChar = key[i % key.length]
+    const pBin = charToBinary(pChar)
+    const kBin = charToBinary(kChar)
+    const xBin = xorBinary(pBin, kBin)
+    const cipherCharCode = parseInt(xBin, 2)
+    // Show printable or hex
+    const cipherChar =
+      cipherCharCode >= 33 && cipherCharCode <= 126
+        ? String.fromCharCode(cipherCharCode)
+        : `\\x${cipherCharCode.toString(16).padStart(2, "0")}`
+    cipherSoFar += cipherChar.length === 1 ? cipherChar : "?"
+
+    steps.push({
+      charIndex: i,
+      plainChar: pChar,
+      keyChar: kChar,
+      plainBinary: pBin,
+      keyBinary: kBin,
+      xorBinary: xBin,
+      cipherChar,
+      cipherSoFar,
+      phase: "result",
+      description: `Paso ${i + 1}: '${pChar}' (${pBin}) XOR '${kChar}' (${kBin}) = ${xBin} -> '${cipherChar}'`,
+    })
   }
-  sorted.push(0)
-
-  steps.push({
-    array: [...a],
-    comparing: [],
-    swapping: [],
-    sorted: Array.from({ length: a.length }, (_, i) => i),
-    description: "Array is sorted!",
-  })
 
   return steps
 }
 
-const bubbleSortSteps = generateBubbleSortSteps([38, 27, 43, 3, 9, 82, 10])
+const PLAIN = "HOLA"
+const KEY = "CLAVE"
+const vernamSteps = generateVernamSteps(PLAIN, KEY)
+
+// Precompute full XOR table for display
+function buildXorTable(plain: string, key: string) {
+  const rows: (string | number)[][] = []
+  for (let i = 0; i < plain.length; i++) {
+    const p = plain[i]
+    const k = key[i % key.length]
+    const pBin = charToBinary(p)
+    const kBin = charToBinary(k)
+    const xBin = xorBinary(pBin, kBin)
+    const dec = parseInt(xBin, 2)
+    const ch =
+      dec >= 33 && dec <= 126
+        ? String.fromCharCode(dec)
+        : `0x${dec.toString(16).padStart(2, "0")}`
+    rows.push([i, p, pBin, k, kBin, xBin, dec, ch])
+  }
+  return rows
+}
+
+const xorTableRows = buildXorTable(PLAIN, KEY)
+
+// Precompute decrypt table
+function buildDecryptTable(plain: string, key: string) {
+  const rows: (string | number)[][] = []
+  for (let i = 0; i < plain.length; i++) {
+    const p = plain[i]
+    const k = key[i % key.length]
+    const pBin = charToBinary(p)
+    const kBin = charToBinary(k)
+    const cBin = xorBinary(pBin, kBin)
+    // decrypt: cipher XOR key = plain
+    const dBin = xorBinary(cBin, kBin)
+    const dChar = String.fromCharCode(parseInt(dBin, 2))
+    rows.push([i, cBin, k, kBin, dBin, dChar])
+  }
+  return rows
+}
+
+const decryptTableRows = buildDecryptTable(PLAIN, KEY)
 
 type NotebookEntry =
   | { type: "markdown"; content: string; isTitle?: boolean }
@@ -71,23 +108,36 @@ const initialCells: CellData[] = [
   {
     id: "cell-1",
     type: "code",
-    code: `# Bubble Sort - Algorithm Implementation
-def bubble_sort(arr):
+    code: `# Cifrado Vernam (One-Time Pad) - Implementacion
+def vernam_encrypt(plaintext, key):
     """
-    Bubble Sort algorithm.
-    Time Complexity: O(n^2)
-    Space Complexity: O(1)
+    Cifrado Vernam usando operacion XOR.
+    
+    Cada caracter del texto plano se combina con
+    el caracter correspondiente de la clave mediante XOR.
+    
+    Requisito: len(key) >= len(plaintext) para 
+    seguridad perfecta (One-Time Pad).
     """
-    n = len(arr)
-    for i in range(n - 1):
-        swapped = False
-        for j in range(n - 1 - i):
-            if arr[j] > arr[j + 1]:
-                arr[j], arr[j + 1] = arr[j + 1], arr[j]
-                swapped = True
-        if not swapped:
-            break  # Array is already sorted
-    return arr`,
+    ciphertext = []
+    for i, char in enumerate(plaintext):
+        key_char = key[i % len(key)]
+        # XOR entre los valores ASCII
+        encrypted = ord(char) ^ ord(key_char)
+        ciphertext.append(encrypted)
+    return ciphertext
+
+def vernam_decrypt(ciphertext, key):
+    """
+    Descifrado Vernam: XOR es su propia inversa.
+    cipher XOR key = plaintext
+    """
+    plaintext = []
+    for i, code in enumerate(ciphertext):
+        key_char = key[i % len(key)]
+        decrypted = code ^ ord(key_char)
+        plaintext.append(chr(decrypted))
+    return ''.join(plaintext)`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -96,11 +146,25 @@ def bubble_sort(arr):
   {
     id: "cell-2",
     type: "code",
-    code: `# Test the algorithm with sample data
-data = [38, 27, 43, 3, 9, 82, 10]
-print(f"Original array: {data}")
-sorted_data = bubble_sort(data.copy())
-print(f"Sorted array:   {sorted_data}")`,
+    code: `# Ejemplo de cifrado y descifrado
+plaintext = "HOLA"
+key = "CLAVE"
+
+print(f"Texto plano:    '{plaintext}'")
+print(f"Clave:          '{key}'")
+print()
+
+# Cifrar
+cipher = vernam_encrypt(plaintext, key)
+cipher_hex = ' '.join(f'0x{c:02x}' for c in cipher)
+print(f"Cifrado (dec):  {cipher}")
+print(f"Cifrado (hex):  {cipher_hex}")
+print()
+
+# Descifrar
+recovered = vernam_decrypt(cipher, key)
+print(f"Descifrado:     '{recovered}'")
+print(f"Verificacion:   {recovered == plaintext}")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -109,9 +173,9 @@ print(f"Sorted array:   {sorted_data}")`,
   {
     id: "cell-3",
     type: "code",
-    code: `# Step-by-step visualization
-# Run this cell to see the algorithm in action
-visualize_bubble_sort([38, 27, 43, 3, 9, 82, 10])`,
+    code: `# Visualizacion paso a paso del XOR
+# Ejecuta esta celda para ver la animacion
+visualize_vernam_xor("HOLA", "CLAVE")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -120,23 +184,21 @@ visualize_bubble_sort([38, 27, 43, 3, 9, 82, 10])`,
   {
     id: "cell-4",
     type: "code",
-    code: `# Complexity analysis
-import time
+    code: `# Tabla detallada de la operacion XOR
+print("Tabla de cifrado XOR caracter a caracter")
+print("=" * 60)
+print(f"{'Pos':>3} | {'Plain':>5} | {'P.Bin':>10} | {'Key':>3} | {'K.Bin':>10} | {'XOR':>10} | {'Dec':>4} | Cipher")
+print("-" * 60)
 
-sizes = [100, 500, 1000, 5000, 10000]
-results = []
-
-for n in sizes:
-    arr = list(range(n, 0, -1))  # Worst case: reversed
-    start = time.time()
-    bubble_sort(arr)
-    elapsed = time.time() - start
-    results.append([n, f"{elapsed:.4f}s", f"{n**2:,}"])
-
-print("Performance Analysis (Worst Case)")
-print("-" * 40)
-for r in results:
-    print(f"n={r[0]:>6} | Time: {r[1]:>8} | O(n^2): {r[2]:>12}")`,
+for i in range(len(plaintext)):
+    p = plaintext[i]
+    k = key[i % len(key)]
+    p_bin = format(ord(p), '08b')
+    k_bin = format(ord(k), '08b')
+    xor_bin = format(ord(p) ^ ord(k), '08b')
+    xor_dec = ord(p) ^ ord(k)
+    c = chr(xor_dec) if 33 <= xor_dec <= 126 else f'0x{xor_dec:02x}'
+    print(f"{i:>3} |   {p:>3} | {p_bin:>10} | {k:>3} | {k_bin:>10} | {xor_bin:>10} | {xor_dec:>4} | {c}")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -145,32 +207,78 @@ for r in results:
   {
     id: "cell-5",
     type: "code",
-    code: `# Optimized version comparison
-def bubble_sort_optimized(arr):
-    """Optimized Bubble Sort with early exit."""
-    n = len(arr)
-    comparisons = 0
-    swaps = 0
-    for i in range(n - 1):
-        swapped = False
-        for j in range(n - 1 - i):
-            comparisons += 1
-            if arr[j] > arr[j + 1]:
-                arr[j], arr[j + 1] = arr[j + 1], arr[j]
-                swaps += 1
-                swapped = True
-        if not swapped:
-            break
-    return arr, comparisons, swaps
+    code: `# Demostracion: XOR es su propia inversa
+# Esta propiedad fundamental permite usar la misma operacion
+# para cifrar y descifrar.
 
-# Test with nearly sorted array
-nearly_sorted = [1, 2, 3, 5, 4, 6, 7, 8, 9, 10]
-result, comps, swps = bubble_sort_optimized(nearly_sorted.copy())
-print(f"Nearly sorted: {nearly_sorted}")
-print(f"Result:        {result}")
-print(f"Comparisons:   {comps}")
-print(f"Swaps:         {swps}")
-print(f"\\nOptimization saved {(10*9//2) - comps} comparisons vs unoptimized!")`,
+print("Propiedad fundamental: A XOR B XOR B = A")
+print("=" * 50)
+
+for i in range(len(plaintext)):
+    p = plaintext[i]
+    k = key[i % len(key)]
+    cipher_val = ord(p) ^ ord(k)
+    decrypt_val = cipher_val ^ ord(k)
+    
+    p_bin = format(ord(p), '08b')
+    k_bin = format(ord(k), '08b')
+    c_bin = format(cipher_val, '08b')
+    d_bin = format(decrypt_val, '08b')
+    
+    print(f"'{p}' ({p_bin}) XOR '{k}' ({k_bin}) = {c_bin} (cifrado)")
+    print(f"    {c_bin}  XOR '{k}' ({k_bin}) = {d_bin} -> '{chr(decrypt_val)}'")
+    print()`,
+    output: undefined,
+    executionCount: null,
+    isRunning: false,
+    isActive: false,
+  },
+  {
+    id: "cell-6",
+    type: "code",
+    code: `# Verificacion de descifrado paso a paso
+print("Tabla de descifrado (Cifrado XOR Clave = Texto plano)")
+print("=" * 55)
+
+cipher = vernam_encrypt(plaintext, key)
+for i, c_val in enumerate(cipher):
+    k = key[i % len(key)]
+    c_bin = format(c_val, '08b')
+    k_bin = format(ord(k), '08b')
+    d_bin = format(c_val ^ ord(k), '08b')
+    d_char = chr(c_val ^ ord(k))
+    print(f"  {c_bin} XOR '{k}' ({k_bin}) = {d_bin} -> '{d_char}'")`,
+    output: undefined,
+    executionCount: null,
+    isRunning: false,
+    isActive: false,
+  },
+  {
+    id: "cell-7",
+    type: "code",
+    code: `# Importancia de la clave aleatoria y de un solo uso
+import os
+
+def generate_otp_key(length):
+    """Genera una clave verdaderamente aleatoria."""
+    return bytes(os.urandom(length))
+
+message = "SECRETO"
+otp_key = generate_otp_key(len(message))
+
+print(f"Mensaje:         '{message}'")
+print(f"Clave OTP (hex): {otp_key.hex()}")
+
+# Cifrar con OTP
+cipher_otp = bytes(ord(c) ^ k for c, k in zip(message, otp_key))
+print(f"Cifrado (hex):   {cipher_otp.hex()}")
+
+# Descifrar con OTP
+decrypted = ''.join(chr(c ^ k) for c, k in zip(cipher_otp, otp_key))
+print(f"Descifrado:      '{decrypted}'")
+print()
+print("NOTA: Si la clave es aleatoria y de un solo uso,")
+print("el cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)")`,
     output: undefined,
     executionCount: null,
     isRunning: false,
@@ -180,29 +288,54 @@ print(f"\\nOptimization saved {(10*9//2) - comps} comparisons vs unoptimized!")`
 
 // Simulated outputs for each cell
 function getSimulatedOutput(cellId: string): string | React.ReactNode {
+  // Precompute cipher values for HOLA with CLAVE
+  const cipherVals = PLAIN.split("").map((ch, i) => ch.charCodeAt(0) ^ KEY.charCodeAt(i % KEY.length))
+  const cipherHex = cipherVals.map((v) => `0x${v.toString(16).padStart(2, "0")}`).join(" ")
+
   switch (cellId) {
     case "cell-1":
       return ""
     case "cell-2":
-      return "Original array: [38, 27, 43, 3, 9, 82, 10]\nSorted array:   [3, 9, 10, 27, 38, 43, 82]"
+      return `Texto plano:    'HOLA'\nClave:          'CLAVE'\n\nCifrado (dec):  [${cipherVals.join(", ")}]\nCifrado (hex):  ${cipherHex}\n\nDescifrado:     'HOLA'\nVerificacion:   True`
     case "cell-3":
-      return <AlgorithmVisualizer steps={bubbleSortSteps} />
+      return <AlgorithmVisualizer steps={vernamSteps} />
     case "cell-4":
       return (
         <TableOutput
-          caption="Performance Analysis (Worst Case)"
-          headers={["n", "Time", "O(n\u00B2)"]}
-          rows={[
-            [100, "0.0003s", "10,000"],
-            [500, "0.0089s", "250,000"],
-            ["1,000", "0.0341s", "1,000,000"],
-            ["5,000", "0.8523s", "25,000,000"],
-            ["10,000", "3.4127s", "100,000,000"],
-          ]}
+          caption="Tabla de cifrado XOR caracter a caracter"
+          headers={["Pos", "Plain", "P.Bin", "Key", "K.Bin", "XOR", "Dec", "Cipher"]}
+          rows={xorTableRows}
         />
       )
-    case "cell-5":
-      return "Nearly sorted: [1, 2, 3, 5, 4, 6, 7, 8, 9, 10]\nResult:        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\nComparisons:   13\nSwaps:         1\n\nOptimization saved 32 comparisons vs unoptimized!"
+    case "cell-5": {
+      const lines: string[] = []
+      lines.push("Propiedad fundamental: A XOR B XOR B = A")
+      lines.push("=".repeat(50))
+      for (let i = 0; i < PLAIN.length; i++) {
+        const p = PLAIN[i]
+        const k = KEY[i % KEY.length]
+        const cVal = p.charCodeAt(0) ^ k.charCodeAt(0)
+        const dVal = cVal ^ k.charCodeAt(0)
+        const pBin = p.charCodeAt(0).toString(2).padStart(8, "0")
+        const kBin = k.charCodeAt(0).toString(2).padStart(8, "0")
+        const cBin = cVal.toString(2).padStart(8, "0")
+        const dBin = dVal.toString(2).padStart(8, "0")
+        lines.push(`'${p}' (${pBin}) XOR '${k}' (${kBin}) = ${cBin} (cifrado)`)
+        lines.push(`    ${cBin}  XOR '${k}' (${kBin}) = ${dBin} -> '${String.fromCharCode(dVal)}'`)
+        lines.push("")
+      }
+      return lines.join("\n")
+    }
+    case "cell-6":
+      return (
+        <TableOutput
+          caption="Tabla de descifrado (Cifrado XOR Clave = Texto plano)"
+          headers={["Pos", "Cifrado", "Key", "K.Bin", "Descifrado", "Char"]}
+          rows={decryptTableRows}
+        />
+      )
+    case "cell-7":
+      return `Mensaje:         'SECRETO'\nClave OTP (hex): a3f1c7d98b2e05\nCifrado (hex):   f094a5bc e84f70\nDescifrado:      'SECRETO'\n\nNOTA: Si la clave es aleatoria y de un solo uso,\nel cifrado es TEORICAMENTE IRROMPIBLE (Shannon, 1949)`
     default:
       return ""
   }
@@ -270,30 +403,33 @@ export default function NotebookPage() {
     )
   }, [])
 
-  // Build the notebook entries interleaving markdown and code
   const notebookEntries: NotebookEntry[] = [
-    { type: "markdown", content: "Bubble Sort - Algorithm Visualization", isTitle: true },
+    { type: "markdown", content: "Cifrado Vernam (One-Time Pad) - Visualizacion Interactiva", isTitle: true },
     {
       type: "markdown",
       content:
-        "This notebook demonstrates the **Bubble Sort** algorithm with interactive step-by-step visualization. Bubble Sort repeatedly steps through the list, compares adjacent elements, and swaps them if they are in the wrong order.\n\n### Key Characteristics\n- **Time Complexity:** `O(n\u00B2)` in the worst and average case\n- **Space Complexity:** `O(1)` - sorts in-place\n- **Stable:** Yes - preserves relative order of equal elements\n- **Adaptive:** With early exit optimization, `O(n)` for nearly sorted arrays",
+        "Este notebook demuestra el **Cifrado Vernam** paso a paso con visualizacion interactiva de la operacion XOR a nivel de bits. El cifrado Vernam es el unico sistema criptografico demostrado como **teoricamente irrompible** cuando se usa correctamente (Claude Shannon, 1949).\n\n### Principio Fundamental\n- Cada caracter del texto plano se combina con un caracter de la clave mediante la operacion **XOR** (OR exclusivo)\n- La operacion XOR es **su propia inversa**: `A XOR B XOR B = A`\n- **Requisito de seguridad perfecta:** la clave debe ser aleatoria, de un solo uso y de la misma longitud que el mensaje",
     },
-    { type: "markdown", content: "## Implementation" },
+    { type: "markdown", content: "## Implementacion" },
     { type: "code", cell: cells[0] },
-    { type: "markdown", content: "### Testing the Algorithm" },
+    { type: "markdown", content: "### Cifrado y Descifrado\nEjemplo con texto `\"HOLA\"` y clave `\"CLAVE\"`." },
     { type: "code", cell: cells[1] },
-    { type: "markdown", content: "## Interactive Visualization\nRun the cell below to see Bubble Sort animate through each step. Use the playback controls to go forward, backward, or autoplay the animation." },
+    { type: "markdown", content: "## Visualizacion Interactiva del XOR\nEjecuta la celda para ver como cada caracter se cifra bit a bit. Los bits resaltados muestran las posiciones donde los bits de la clave difieren del texto plano." },
     { type: "code", cell: cells[2] },
-    { type: "markdown", content: "## Performance Analysis\nLet's benchmark the algorithm with different input sizes to verify the `O(n\u00B2)` time complexity." },
+    { type: "markdown", content: "## Tabla de Cifrado Detallada\nTabla completa mostrando la representacion binaria y la operacion XOR para cada caracter." },
     { type: "code", cell: cells[3] },
-    { type: "markdown", content: "## Optimized Version\nBy adding an early exit when no swaps occur in a pass, we can significantly improve performance on nearly sorted arrays." },
+    { type: "markdown", content: "## Propiedad Fundamental: XOR como Inversa\nLa operacion XOR tiene la propiedad de que aplicarla dos veces con la misma clave recupera el valor original. Esto es lo que permite usar la **misma operacion** tanto para cifrar como para descifrar." },
     { type: "code", cell: cells[4] },
+    { type: "markdown", content: "## Verificacion del Descifrado\nTabla paso a paso del proceso inverso: aplicamos XOR del texto cifrado con la clave para recuperar el texto original." },
+    { type: "code", cell: cells[5] },
+    { type: "markdown", content: "## Seguridad: One-Time Pad\nPara que el cifrado Vernam sea **teoricamente irrompible**, la clave debe ser:\n- **Aleatoria** - generada con un CSPRNG (generador criptografico)\n- **De un solo uso** - nunca reutilizar la clave\n- **Igual o mayor longitud** que el mensaje" },
+    { type: "code", cell: cells[6] },
   ]
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <NotebookHeader
-        title="bubble_sort_visualization"
+        title="cifrado_vernam_otp"
         onRunAll={runAll}
         onReset={resetAll}
         isRunning={kernelStatus === "busy"}
@@ -323,26 +459,24 @@ export default function NotebookPage() {
             )
           })}
 
-          {/* Add cell button */}
           <div className="flex justify-center py-4">
             <Button
               variant="ghost"
               className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
             >
               <Plus className="h-4 w-4" />
-              Add Cell
+              Agregar Celda
             </Button>
           </div>
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border px-6 py-3">
         <div className="mx-auto flex max-w-4xl items-center justify-between text-xs font-mono text-muted-foreground">
           <span>
-            {cells.filter((c) => c.executionCount !== null).length} / {cells.length} cells executed
+            {cells.filter((c) => c.executionCount !== null).length} / {cells.length} celdas ejecutadas
           </span>
-          <span>Python 3.11.4 | NumPy 1.24.3</span>
+          <span>Python 3.11.4 | Criptografia</span>
         </div>
       </footer>
     </div>
