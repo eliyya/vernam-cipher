@@ -29,6 +29,8 @@ interface CodeCellProps {
 
 function highlightSyntax(code: string): React.ReactNode[] {
   const lines = code.split("\n")
+  const totalLines = lines.length
+  const gutterWidth = `${String(totalLines).length + 1}ch`
   return lines.map((line, lineIndex) => {
     const tokens: React.ReactNode[] = []
     let remaining = line
@@ -167,8 +169,8 @@ function highlightSyntax(code: string): React.ReactNode[] {
     return (
       <div key={lineIndex} className="flex">
         <span
-          className="mr-4 inline-block w-6 text-right select-none font-mono text-xs"
-          style={{ color: "var(--syntax-comment)" }}
+          className="mr-4 inline-block text-right select-none font-mono text-xs shrink-0"
+          style={{ color: "var(--syntax-comment)", width: gutterWidth }}
         >
           {lineIndex + 1}
         </span>
