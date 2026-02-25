@@ -65,7 +65,7 @@ function highlightSyntax(code: string): React.ReactNode[] {
 
       // TypeScript / JS keywords
       const kwMatch = remaining.match(
-        /^(function|const|let|var|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|import|export|from|as|default|class|extends|implements|interface|type|enum|namespace|async|await|yield|try|catch|finally|throw|void|delete| in |of|true|false|null|undefined|this|super|static|readonly|public|private|protected|abstract|declare|module|require|keyof|infer|never|unknown|any|number|string|boolean|bigint|symbol|object|Record|Array|Map|Set|Promise|Uint8Array)\b/
+        /^(function|const|let|var|return|if|else|for|while| do |switch|case|break|continue|new|typeof|instanceof|import|export|from|as|default|class|extends|implements|interface|type|enum|namespace|async|await|yield|try|catch|finally|throw|void|delete| in |of|true|false|null|undefined|this|super|static|readonly|public|private|protected|abstract|declare|module|require|keyof|infer|never|unknown|any|number|string|boolean|bigint|symbol|object|Record|Array|Map|Set|Promise|Uint8Array)\b/
       )
       if (kwMatch) {
         tokens.push(
